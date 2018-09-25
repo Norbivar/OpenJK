@@ -801,7 +801,7 @@ void NPC_BSFollowLeader (void)
 		{
 			// If Too Close, Back Away Some
 			//------------------------------
-			if (STEER::Reached(NPC, NPC->client->leader, 65.0f))
+			if (STEER::Reached(NPC, NPC->client->leader, 30.0f)) // was 65.0f
 			{
 				STEER::Evade(NPC, NPC->client->leader);
 			}

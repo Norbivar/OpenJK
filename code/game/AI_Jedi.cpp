@@ -3647,6 +3647,7 @@ evasionType_t Jedi_SaberBlockGo( gentity_t *self, usercmd_t *cmd, vec3_t pHitloc
 			self->client->ps.forcePowerDebounce[FP_SABER_DEFENSE] = level.time + parryReCalcTime;
 		}
 	}
+	//Com_Printf(S_COLOR_WHITE"Evasion type: ^2%d\n", evasionType);
 	return evasionType;
 }
 
@@ -5800,7 +5801,7 @@ static void Jedi_Combat( void )
 	vec3_t	enemy_dir, enemy_movedir, enemy_dest;
 	float	enemy_dist, enemy_movespeed;
 	trace_t	trace;
-
+	
 	//See where enemy will be 300 ms from now
 	Jedi_SetEnemyInfo( enemy_dest, enemy_dir, &enemy_dist, enemy_movedir, &enemy_movespeed, 300 );
 

@@ -323,6 +323,7 @@ void ST_MarkToCover( gentity_t *self )
 
 void ST_StartFlee( gentity_t *self, gentity_t *enemy, vec3_t dangerPoint, int dangerLevel, int minTime, int maxTime )
 {
+	Com_Printf("FLEE!\n");
 	if ( !self || !self->NPC )
 	{
 		return;
@@ -2351,6 +2352,26 @@ void NPC_BSST_Attack( void )
 	if ( dot > 0.5f ||( enemyDist * (1.0f-dot)) < 10000 )
 	{//enemy is in front of me or they're very close and not behind me
 		enemyInFOV = qtrue;
+	}
+	if (enemyDist < 60000.0f) // enemy is close
+	{
+		if (NPC->enemy->client->ps.weapon == WP_SABER)  // with lightsaber -> I'm no hero
+		{
+			if (NPC->enemy->client->ps.weaponstate == WEAPON_READY || NPC->enemy->client->ps.weaponstate == WEAPON_FIRING)
+			{
+				Com_Printf("^3KOZEL VAGY!\n");
+				//doMove = qtrue;
+				//shoot = qtrue;
+
+				NPCInfo->scriptFlags &= SCF_WALKING;
+				if (enemyDist < 20000.0f && NPCInfo->behaviorState != BS_FLEE)
+				{
+					NPCInfo->scriptFlags &= SCF_RUNNING; // SCF_RUNNING ?
+					shoot = qfalse;
+					NPC_StartFlee(NPC->enemy, NPC->enemy->currentOrigin, AEL_DANGER_GREAT, 5000, 10000);
+				}
+			}
+		}
 	}
 
 	if ( enemyDist < MIN_ROCKET_DIST_SQUARED )//128
