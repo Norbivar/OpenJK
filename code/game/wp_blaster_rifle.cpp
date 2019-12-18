@@ -43,7 +43,7 @@ void WP_FireBlasterMissile( gentity_t *ent, vec3_t start, vec3_t dir, qboolean a
 		damage *= 3;
 		velocity = ATST_MAIN_VEL + ent->client->ps.speed;
 	}
-	else
+	/*else
 	{
 		// If an enemy is shooting at us, lower the velocity so you have a chance to evade
 		if ( ent->client && ent->client->ps.clientNum != 0 && ent->client->NPC_class != CLASS_BOBAFETT )
@@ -57,7 +57,7 @@ void WP_FireBlasterMissile( gentity_t *ent, vec3_t start, vec3_t dir, qboolean a
 				velocity *= BLASTER_NPC_HARD_VEL_CUT;
 			}
 		}
-	}
+	}*/
 
 	WP_TraceSetStart( ent, start, vec3_origin, vec3_origin );//make sure our start point isn't on the other side of a wall
 

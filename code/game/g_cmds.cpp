@@ -50,6 +50,9 @@ CheatsOk
 ==================
 */
 qboolean	CheatsOk( gentity_t *ent ) {
+#ifdef _DEBUG
+	return qtrue;
+#endif
 	if ( !g_cheats->integer ) {
 		gi.SendServerCommand( ent-g_entities, "print \"Cheats are not enabled on this server.\n\"");
 		return qfalse;

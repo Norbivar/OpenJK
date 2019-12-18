@@ -1,3 +1,11 @@
+#OpenJK 
+Some adjustments I made:
+- changed E11 Blaster Rifle shooting animation to the Distruptor one (looks much more appropriate)
+- disabled projectile velocity reduction for NPCs shooting at the player (should look less hilarious and more challenging) but reduced overall speed for E11 Blaster Rifle
+- Stormtroopers won't shoot each other now
+- Stormtroopers now will try to maximize effectiveness : they will now crouch, if that enables others to shoot from behind
+- Stormtroopers will lose target if you break line of sight -> they will no longer watch you through walls/objects
+
 # OpenJK
 
 OpenJK is an effort by the JACoders group to maintain and improve the game engines on which the Jedi Academy (JA) and Jedi Outcast (JO) games run on, while maintaining *full backwards compatibility* with the existing games. *This project does not attempt to rebalance or otherwise modify core gameplay*.

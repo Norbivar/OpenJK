@@ -1455,16 +1455,14 @@ static void ST_CheckMoveState( void )
 
 void ST_ResolveBlockedShot( int hit )
 {
-	int	stuckTime;
 	//figure out how long we intend to stand here, max
-	if ( TIMER_Get( NPC, "roamTime" ) > TIMER_Get( NPC, "stick" ) )
-	{
-		stuckTime = TIMER_Get( NPC, "roamTime" )-level.time;
-	}
-	else
-	{
-		stuckTime = TIMER_Get( NPC, "stick" )-level.time;
-	}
+	std::vector<int> possibleTimes = {
+		TIMER_Get(NPC, "roamTime") - level.time,
+		TIMER_Get(NPC, "stick") - level.time,
+		5000
+	};
+	int	stuckTime = *std::max_element(possibleTimes.begin(), possibleTimes.end());
+
 
 	if ( TIMER_Done( NPC, "duck" ) )
 	{//we're not ducking
@@ -1476,7 +1474,7 @@ void ST_ResolveBlockedShot( int hit )
 				if ( TIMER_Done( member, "stand" ) )
 				{//they're not being forced to stand
 					//tell them to duck at least as long as I'm not moving
-					TIMER_Set( member, "duck", stuckTime );	// tell my friend to duck so I can shoot over his head
+					TIMER_Set( member, "duck", stuckTime);	// tell my friend to duck so I can shoot over his head
 					return;
 				}
 			}
@@ -2353,26 +2351,6 @@ void NPC_BSST_Attack( void )
 	{//enemy is in front of me or they're very close and not behind me
 		enemyInFOV = qtrue;
 	}
-	if (enemyDist < 60000.0f) // enemy is close
-	{
-		if (NPC->enemy->client->ps.weapon == WP_SABER)  // with lightsaber -> I'm no hero
-		{
-			if (NPC->enemy->client->ps.weaponstate == WEAPON_READY || NPC->enemy->client->ps.weaponstate == WEAPON_FIRING)
-			{
-				Com_Printf("^3KOZEL VAGY!\n");
-				//doMove = qtrue;
-				//shoot = qtrue;
-
-				NPCInfo->scriptFlags &= SCF_WALKING;
-				if (enemyDist < 20000.0f && NPCInfo->behaviorState != BS_FLEE)
-				{
-					NPCInfo->scriptFlags &= SCF_RUNNING; // SCF_RUNNING ?
-					shoot = qfalse;
-					NPC_StartFlee(NPC->enemy, NPC->enemy->currentOrigin, AEL_DANGER_GREAT, 5000, 10000);
-				}
-			}
-		}
-	}
 
 	if ( enemyDist < MIN_ROCKET_DIST_SQUARED )//128
 	{//enemy within 128
@@ -2398,12 +2376,15 @@ void NPC_BSST_Attack( void )
 		}
 	}
 
+	bool targetLost = false;
 	//can we see our target?
 	if ( NPC_ClearLOS( NPC->enemy ) )
 	{
 		AI_GroupUpdateEnemyLastSeen( NPCInfo->group, NPC->enemy->currentOrigin );
 		NPCInfo->enemyLastSeenTime = level.time;
 		enemyLOS = qtrue;
+		if (TIMER_Exists(NPC, "enemyLostChatter"))
+			TIMER_Remove(NPC, "enemyLostChatter"); // we reengaged so cancel the speech
 
 		if ( NPC->client->ps.weapon == WP_NONE )
 		{
@@ -2430,8 +2411,10 @@ void NPC_BSST_Attack( void )
 
 				if ( hit == NPC->enemy->s.number
 					|| ( hitEnt && hitEnt->client && hitEnt->client->playerTeam == NPC->client->enemyTeam )
-					|| ( hitEnt && hitEnt->takedamage && ((hitEnt->svFlags&SVF_GLASS_BRUSH)||hitEnt->health < 40||NPC->s.weapon == WP_EMPLACED_GUN) ) )
+					|| ( hitEnt && hitEnt->takedamage && ((hitEnt->svFlags&SVF_GLASS_BRUSH)||hitEnt->health < 40||NPC->s.weapon == WP_EMPLACED_GUN) ) 
+					&& ( hitEnt && hitEnt->client && NPC->client->playerTeam != hitEnt->client->playerTeam))
 				{//can hit enemy or enemy ally or will hit glass or other minor breakable (or in emplaced gun), so shoot anyway
+				 //but don't fire if a teammate is in the way
 					AI_GroupUpdateClearShotTime( NPCInfo->group );
 					enemyCS = qtrue;
 					NPC_AimAdjust( 2 );//adjust aim better longer we have clear shot at enemy
@@ -2456,12 +2439,18 @@ void NPC_BSST_Attack( void )
 			}
 		}
 	}
-	else if ( gi.inPVS( NPC->enemy->currentOrigin, NPC->currentOrigin ) )
+	else // we have an NPC->enemy, but he's not in line of sight
+	{
+		NPCInfo->enemyLastSeenTime = level.time;
+		targetLost = true; // this will clear NPC->enemy upon the end of this cycle
+	}
+	/*else if ( gi.inPVS( NPC->enemy->currentOrigin, NPC->currentOrigin ) )
 	{
 		NPCInfo->enemyLastSeenTime = level.time;
 		faceEnemy = qtrue;
 		NPC_AimAdjust( -1 );//adjust aim worse longer we cannot see enemy
-	}
+	}*/
+
 
 	if ( NPC->client->ps.weapon == WP_NONE )
 	{
@@ -2470,13 +2459,16 @@ void NPC_BSST_Attack( void )
 	}
 	else
 	{
-		if ( enemyLOS )
-		{//FIXME: no need to face enemy if we're moving to some other goal and he's too far away to shoot?
-			faceEnemy = qtrue;
-		}
-		if ( enemyCS )
+		if (TIMER_Done(NPC, "flee"))
 		{
-			shoot = qtrue;
+			if (enemyLOS)
+			{//FIXME: no need to face enemy if we're moving to some other goal and he's too far away to shoot?
+				faceEnemy = qtrue;
+			}
+			if (enemyCS && !hitAlly)
+			{
+				shoot = qtrue;
+			}
 		}
 	}
 
@@ -2707,6 +2699,15 @@ void NPC_BSST_Attack( void )
 			}
 		}
 	}
+	if (targetLost)
+	{
+		//TODO: maybe investigate?
+		targetLost = false;
+		G_ClearEnemy(NPC); // if we would do this on losing line of sight, it might end up being a segfault 
+		TIMER_Start(NPC, "enemyLastVisible", Q_irand(4000, 7000));
+		if (!TIMER_Exists(NPC, "enemyLostChatter"))
+			TIMER_Start(NPC, "enemyLostChatter", Q_irand(3000, 6000));
+	}
 }
 
 extern qboolean G_TuskenAttackAnimDamage( gentity_t *self );
@@ -2723,6 +2724,12 @@ void NPC_BSST_Default( void )
 		{
 			Noghri_StickTrace();
 		}
+	}
+
+	if (TIMER_Exists(NPC, "enemyLostChatter") && TIMER_Done(NPC, "enemyLostChatter"))
+	{
+		TIMER_Remove(NPC, "enemyLostChatter");
+		ST_Speech(NPC, SPEECH_ESCAPING, 0.15f);
 	}
 
 	if( !NPC->enemy )
